@@ -133,11 +133,10 @@
             opacity: 0;
             pointer-events: none;
             z-index: 100;
-            /* transition時間を0.2sに少し伸ばして自然に */
             transition: opacity 0.2s ease-out;
         }
         .flash-active {
-            opacity: 1 !important; /* 完全に真っ白にする */
+            opacity: 1 !important;
         }
     </style>
 </head>
@@ -177,7 +176,6 @@
         const flashLayer = document.getElementById('flash-layer');
         const shutterBtn = document.getElementById('shutter-btn');
         
-        // 画像パスの設定
         frameImg.src = "frame.png";
 
         const previewOverlay = document.getElementById('preview-overlay');
@@ -197,12 +195,14 @@
                 video.style.transform = 'translate(-50%, -50%) scaleX(1)';
             }
 
+            // ★修正ポイント：4K解像度(3840x2160)を要求する設定に変更
+            // PCやタブレットで低解像度になるのを防ぎます
             navigator.mediaDevices.getUserMedia({
                 video: { 
                     facingMode: currentFacingMode,
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 },
-                    aspectRatio: 1.7777777778
+                    width: { ideal: 3840 },  // 4K幅を要求
+                    height: { ideal: 2160 }  // 4K高さを要求
+                    // aspectRatioの指定を外して、とにかく高画素を優先させる
                 },
                 audio: false
             })
@@ -227,17 +227,17 @@
             startCamera();
         });
 
-        // ★修正した撮影処理
+        // 撮影処理
         const takePhoto = (e) => {
             if (e.type === 'touchstart') e.preventDefault();
             
             if (shutterBtn.dataset.processing === "true") return;
             shutterBtn.dataset.processing = "true";
 
-            // 1. フラッシュ開始（真っ白にする）
+            // 1. フラッシュ開始
             flashLayer.classList.add('flash-active');
 
-            // 2. 映像キャプチャ＆合成処理（裏で先行して行う）
+            // 2. 映像キャプチャ
             canvas.width = 1080;
             canvas.height = 1920;
             drawImageProp(context, video, 0, 0, canvas.width, canvas.height, 0.5, 0.5, currentFacingMode === 'user');
@@ -247,20 +247,14 @@
             const dataURL = canvas.toDataURL('image/jpeg', 1.0);
             previewImg.src = dataURL;
 
-            // 3. 少し待ってからフラッシュをフェードアウトさせ、入れ替わりでプレビューを出す
+            // 3. フラッシュ終了後にプレビューを表示
             setTimeout(() => {
-                // フラッシュフェードアウト開始
                 flashLayer.classList.remove('flash-active');
-                
-                // プレビュー表示（フラッシュが消えていくのと入れ替わりで表示される）
                 previewOverlay.style.display = 'flex';
-                
-                // 処理完了フラグ解除
                 shutterBtn.dataset.processing = "false";
-            }, 150); // 0.15秒待機（CSSのtransition 0.2s と合わせることで自然に見せる）
+            }, 150);
         };
 
-        // 高速化のため touchstart を使用
         shutterBtn.addEventListener('touchstart', takePhoto, {passive: false});
         shutterBtn.addEventListener('click', takePhoto);
 
