@@ -19,20 +19,17 @@
             overflow: hidden;
         }
 
-        /* ★PC対策：画面が「縦長」より横に広い場合（PCなど）は、
-           コンテナの幅を制限して中央寄せにし、スマホのような見た目にする */
+        /* PC対策：画面が「縦長」より横に広い場合は幅を制限 */
         @media (min-aspect-ratio: 9/16) {
             #camera-container {
                 width: auto;
-                /* 高さに合わせて幅を 9:16 の比率にする */
                 aspect-ratio: 9/16; 
-                margin: 0 auto; /* 中央寄せ */
-                border-left: 1px solid #333; /* 境界線（お好みで） */
+                margin: 0 auto; 
+                border-left: 1px solid #333;
                 border-right: 1px solid #333;
             }
         }
 
-        /* カメラ映像 */
         #camera {
             position: absolute;
             top: 50%;
@@ -44,7 +41,6 @@
             z-index: 1;
         }
 
-        /* フレーム画像 */
         #frame {
             position: absolute;
             top: 0;
@@ -56,7 +52,6 @@
             pointer-events: none;
         }
 
-        /* シャッターボタン */
         #shutter-btn {
             position: absolute;
             bottom: calc(30px + env(safe-area-inset-bottom)); 
@@ -73,7 +68,6 @@
         }
         #shutter-btn:active { background-color: #ddd; }
 
-        /* 切り替えボタン */
         #switch-btn {
             position: absolute;
             top: calc(20px + env(safe-area-inset-top));
@@ -98,7 +92,6 @@
             fill: white;
         }
 
-        /* プレビュー画面 */
         #preview-overlay {
             display: none;
             position: fixed;
@@ -114,7 +107,6 @@
             align-items: center;
             color: white;
             text-align: center;
-            
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
             box-sizing: border-box; 
@@ -132,6 +124,8 @@
     </style>
 </head>
 <body>
+
+    <audio id="shutter-snd" src="shutter.mp3" preload="auto"></audio>
 
     <div id="camera-container">
         <video id="camera" autoplay playsinline muted></video>
@@ -162,8 +156,8 @@
         const canvas = document.getElementById('canvas');
         const context = canvas.getContext('2d');
         const frameImg = document.getElementById('frame');
+        const shutterSnd = document.getElementById('shutter-snd'); // ★追加：音声要素の取得
         
-        // ★重要：画像のパスを確認してください
         frameImg.src = "frame.png";
 
         const previewOverlay = document.getElementById('preview-overlay');
@@ -215,7 +209,13 @@
 
         document.getElementById('shutter-btn').addEventListener('click', () => {
             
-            // ★保存時は常に 1080x1920 で固定
+            // ★追加：シャッター音を再生
+            if(shutterSnd) {
+                shutterSnd.currentTime = 0; // 連続再生できるように時間をリセット
+                shutterSnd.play().catch(e => console.log("音声再生エラー(初回タップ制限など):", e));
+            }
+
+            // 保存時は常に 1080x1920 で固定
             canvas.width = 1080;
             canvas.height = 1920;
 
