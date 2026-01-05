@@ -133,10 +133,11 @@
             opacity: 0;
             pointer-events: none;
             z-index: 100;
-            transition: opacity 0.1s ease-out;
+            /* transition時間を0.2sに少し伸ばして自然に */
+            transition: opacity 0.2s ease-out;
         }
         .flash-active {
-            opacity: 0.8 !important;
+            opacity: 1 !important; /* 完全に真っ白にする */
         }
     </style>
 </head>
@@ -226,36 +227,37 @@
             startCamera();
         });
 
-        // 撮影処理
+        // ★修正した撮影処理
         const takePhoto = (e) => {
             if (e.type === 'touchstart') e.preventDefault();
             
             if (shutterBtn.dataset.processing === "true") return;
             shutterBtn.dataset.processing = "true";
 
-            // 1. フラッシュ演出のみ実行（音声再生コードは削除済み）
+            // 1. フラッシュ開始（真っ白にする）
             flashLayer.classList.add('flash-active');
-            setTimeout(() => {
-                flashLayer.classList.remove('flash-active');
-            }, 100);
 
-            // 2. 映像キャプチャ（1080x1920固定）
+            // 2. 映像キャプチャ＆合成処理（裏で先行して行う）
             canvas.width = 1080;
             canvas.height = 1920;
             drawImageProp(context, video, 0, 0, canvas.width, canvas.height, 0.5, 0.5, currentFacingMode === 'user');
+            if (frameImg.complete && frameImg.naturalWidth !== 0) {
+                context.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
+            }
+            const dataURL = canvas.toDataURL('image/jpeg', 1.0);
+            previewImg.src = dataURL;
 
-            // 3. 処理を非同期にしてカクつき防止
-            requestAnimationFrame(() => {
-                if (frameImg.complete && frameImg.naturalWidth !== 0) {
-                    context.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
-                }
-
-                const dataURL = canvas.toDataURL('image/jpeg', 1.0);
-                previewImg.src = dataURL;
+            // 3. 少し待ってからフラッシュをフェードアウトさせ、入れ替わりでプレビューを出す
+            setTimeout(() => {
+                // フラッシュフェードアウト開始
+                flashLayer.classList.remove('flash-active');
+                
+                // プレビュー表示（フラッシュが消えていくのと入れ替わりで表示される）
                 previewOverlay.style.display = 'flex';
                 
+                // 処理完了フラグ解除
                 shutterBtn.dataset.processing = "false";
-            });
+            }, 150); // 0.15秒待機（CSSのtransition 0.2s と合わせることで自然に見せる）
         };
 
         // 高速化のため touchstart を使用
