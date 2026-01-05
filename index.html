@@ -195,14 +195,14 @@
                 video.style.transform = 'translate(-50%, -50%) scaleX(1)';
             }
 
-            // ★修正ポイント：4K解像度(3840x2160)を要求する設定に変更
-            // PCやタブレットで低解像度になるのを防ぎます
+            // ★修正ポイント：比率(16:9)を指定せず、ひたすら「大きいサイズ」を要求する
+            // これによりiPadなど4:3センサーの端末でもクロップされずに全画角が映るようになります
             navigator.mediaDevices.getUserMedia({
                 video: { 
                     facingMode: currentFacingMode,
-                    width: { ideal: 3840 },  // 4K幅を要求
-                    height: { ideal: 2160 }  // 4K高さを要求
-                    // aspectRatioの指定を外して、とにかく高画素を優先させる
+                    // 4096などの巨大な数字を指定することで、その端末の最大解像度を引き出します
+                    width: { ideal: 4096 },  
+                    height: { ideal: 4096 }
                 },
                 audio: false
             })
