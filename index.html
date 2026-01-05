@@ -10,14 +10,17 @@
         #camera-container {
             position: relative;
             width: 100%;
+            /* アドレスバー対策：dvhを使って高さを動的に合わせる */
             height: 100vh;
             height: 100dvh; 
+            
             background: black;
             display: flex;
             justify-content: center;
             align-items: center;
         }
 
+        /* カメラ映像 */
         #camera {
             position: absolute;
             top: 50%;
@@ -25,26 +28,28 @@
             transform: translate(-50%, -50%);
             width: 100%;
             height: 100%;
-            object-fit: cover; 
+            object-fit: cover; /* 画面いっぱいに表示（はみ出た部分はトリミング） */
             z-index: 1;
         }
 
+        /* フレーム画像 */
         #frame {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            max-width: 100%;
-            max-height: 100%;
-            width: auto;
-            height: auto;
-            object-fit: contain;
+            top: 0;
+            left: 0;
+            /* ★修正ポイント1：画面いっぱいに強制的に広げる設定に変更 */
+            width: 100%;
+            height: 100%;
+            /* contain（全体を収める）から cover（画面を覆う）に変更 */
+            object-fit: cover; 
             z-index: 2;
             pointer-events: none;
         }
 
+        /* シャッターボタン */
         #shutter-btn {
             position: absolute;
+            /* ホームバー（下の横棒）を避ける */
             bottom: calc(30px + env(safe-area-inset-bottom)); 
             left: 50%;
             transform: translateX(-50%);
@@ -59,8 +64,10 @@
         }
         #shutter-btn:active { background-color: #ddd; }
 
+        /* 切り替えボタン */
         #switch-btn {
             position: absolute;
+            /* ノッチ（上の切り欠き）を避ける */
             top: calc(20px + env(safe-area-inset-top));
             right: 20px;
             width: 50px;
@@ -83,6 +90,7 @@
             fill: white;
         }
 
+        /* プレビュー画面 */
         #preview-overlay {
             display: none;
             position: fixed;
@@ -90,7 +98,7 @@
             left: 0;
             width: 100%;
             height: 100vh; 
-            height: 100dvh;
+            height: 100dvh; /* アドレスバー対策 */
             background: rgba(0,0,0,0.95);
             z-index: 20;
             flex-direction: column;
@@ -98,12 +106,15 @@
             align-items: center;
             color: white;
             text-align: center;
+            
+            /* 上下の安全領域を確保 */
             padding-top: env(safe-area-inset-top);
             padding-bottom: env(safe-area-inset-bottom);
             box-sizing: border-box; 
         }
         
         #preview-img {
+            /* プレビュー画面では全体が確認できるように「収まる」表示のままにする */
             max-width: 90vw;
             max-height: 70vh; 
             border: 2px solid white;
@@ -155,6 +166,7 @@
         let currentFacingMode = 'user';
         let currentStream = null;
 
+        // カメラ起動処理
         function startCamera() {
             if (currentStream) {
                 currentStream.getTracks().forEach(track => track.stop());
@@ -185,10 +197,11 @@
             });
         }
 
+        // 画像読み込みを待たずにカメラを起動
         startCamera();
         
         frameImg.onerror = function() {
-            console.log("フレーム画像の読み込みに失敗しました。");
+            console.log("フレーム画像の読み込みに失敗しました。ファイル名を確認してください。");
         };
 
         document.getElementById('switch-btn').addEventListener('click', () => {
@@ -198,57 +211,23 @@
 
         // シャッターボタン処理
         document.getElementById('shutter-btn').addEventListener('click', () => {
-            const dpr = window.devicePixelRatio || 1; 
             
-            // 1. 現在の画面に基づいた目標サイズ（物理ピクセル）を計算
-            let targetWidth = window.innerWidth * dpr;
-            let targetHeight = window.innerHeight * dpr;
+            // ★修正ポイント2：保存サイズを 1080x1920 に固定
+            // 画面サイズや解像度に関係なく、常にこのサイズでキャンバスを作成します。
+            canvas.width = 1080;
+            canvas.height = 1920;
 
-            // ★追加：最大高さの制限設定（ここでは1920pxに設定）
-            // この数値を変更すれば上限を変えられます
-            const MAX_HEIGHT = 1920;
-
-            // 2. 目標の高さが最大値を超えていたら、アスペクト比を維持して縮小
-            if (targetHeight > MAX_HEIGHT) {
-                const aspectRatio = targetWidth / targetHeight;
-                targetHeight = MAX_HEIGHT;
-                targetWidth = targetHeight * aspectRatio;
-                
-                // 描画ズレを防ぐために整数に丸める
-                targetWidth = Math.round(targetWidth);
-                targetHeight = Math.round(targetHeight);
-            }
-
-            // 3. 計算したサイズをキャンバスに適用
-            canvas.width = targetWidth;
-            canvas.height = targetHeight;
-
+            // カメラ映像を描画（1080x1920の範囲に合わせて中央をトリミング表示）
             drawImageProp(context, video, 0, 0, canvas.width, canvas.height, 0.5, 0.5, currentFacingMode === 'user');
 
             // フレーム画像を描画
-            const canvasAspect = canvas.width / canvas.height;
-            const nWidth = frameImg.naturalWidth || 100;
-            const nHeight = frameImg.naturalHeight || 100;
-            const frameAspect = nWidth / nHeight;
-
-            let drawW, drawH, drawX, drawY;
-
-            if (canvasAspect > frameAspect) {
-                drawH = canvas.height;
-                drawW = canvas.height * frameAspect;
-                drawX = (canvas.width - drawW) / 2;
-                drawY = 0;
-            } else {
-                drawW = canvas.width;
-                drawH = canvas.width / frameAspect;
-                drawX = 0;
-                drawY = (canvas.height - drawH) / 2;
-            }
-
+            // 画像が正しく読み込まれていれば、キャンバスサイズに合わせて描画します。
+            // 素材自体も1080x1920の比率なので、ぴったり収まります。
             if (frameImg.complete && frameImg.naturalWidth !== 0) {
-                context.drawImage(frameImg, 0, 0, nWidth, nHeight, drawX, drawY, drawW, drawH);
+                context.drawImage(frameImg, 0, 0, canvas.width, canvas.height);
             }
 
+            // 最高画質(1.0)でJPEG化
             const dataURL = canvas.toDataURL('image/jpeg', 1.0);
             previewImg.src = dataURL;
             previewOverlay.style.display = 'flex';
@@ -258,6 +237,7 @@
             previewOverlay.style.display = 'none';
         }
 
+        // 映像を比率を保ったまま中央トリミングして描画する関数
         function drawImageProp(ctx, img, x, y, w, h, offsetX, offsetY, isMirrored) {
             if (arguments.length === 2) {
                 x = y = 0;
